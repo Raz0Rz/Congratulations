@@ -1,0 +1,30 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.pidb
+*.log
+appsettings.Development.json
+*.csproj.user
+
+# Node.js / React
+node_modules/
+package-lock.json
+yarn.lock
+.env
+.env.local
+.DS_Store
+
+# VS Code
+.vscode/
+.idea/
+*.sln.iml
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Uploads (фото именинников)
+wwwroot/images/
