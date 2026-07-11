@@ -74,3 +74,15 @@ public async Task<BirthdayPerson> ChangeAsync(int id, BirthdayPerson updatedPers
 
     return User;
 }
+
+public async Task<bool> DeleteAsync(int id){
+    var User = await _context.BirthdayPersons
+    .FirstOrDefaultAsync(p => p.Id == id);
+
+    if(User == null) return false;
+
+    _context.BirthdayPersons.Remove(user);
+    await _context.SaveChangesAsync();
+
+    return true;
+}
