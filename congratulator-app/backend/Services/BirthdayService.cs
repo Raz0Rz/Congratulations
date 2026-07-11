@@ -27,7 +27,7 @@ public class BirthdayService : IBirthdayService
     }
 }
 
-public async Task <IEnumerable<BirthdayPerson>> GetUpAsync (int day){
+public async Task <IEnumerable<BirthdayPerson>> GetUpAsync(int day){
     var today = DateOnly.FromDateTime(DateTime.Today);
     var futureDate = today.AddDays(days);
     int daysInYear = DateTime.IsLeapYear(today.Year) ? 366 : 365;
@@ -46,4 +46,14 @@ public async Task <IEnumerable<BirthdayPerson>> GetUpAsync (int day){
     }
 
     return listUser;
+}
+
+public async Task <IEnumerable<BirthdayPerson>> GetUpALLAsync(){
+    return await _context.BirthdayPersons.ToListAsync();
+}
+
+public async Task<BirthdayPerson> CreateAsync(BirthdayPerson person){
+    _context.BirthdayPersons.Add(person);
+    await _context.SaveChangesAsync();
+    return person;
 }
