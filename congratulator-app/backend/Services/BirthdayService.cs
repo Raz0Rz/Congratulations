@@ -58,8 +58,7 @@ public class BirthdayService : IBirthdayService
             throw new ValidationException(errors);
         }
 
-        var User = await _context.BirthdayPersons
-        .FirstOrDefaultAsync(p => p.Id == id);
+        var User = await GetByIdAsync(id);
 
         if(User == null) return null;
         
@@ -67,7 +66,6 @@ public class BirthdayService : IBirthdayService
         User.LastName = updatedPerson.LastName;
         User.BirthDate = updatedPerson.BirthDate;
         User.PhotoPath = updatedPerson.PhotoPath;
-        User.CreateTime = updatedPerson.CreateTime;
 
         await _context.SaveChangesAsync();
 
@@ -75,8 +73,7 @@ public class BirthdayService : IBirthdayService
     }
 
     public async Task<bool> DeleteAsync(int id){
-        var User = await _context.BirthdayPersons
-        .FirstOrDefaultAsync(p => p.Id == id);
+        var User = await GetByIdAsync(id);
 
         if(User == null) return false;
 
@@ -84,6 +81,10 @@ public class BirthdayService : IBirthdayService
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    public async Task<BirthdayPerson?> GetByIdAsync(int id){
+        return await _context.BirthdayPersons.FirstOrDefaultAsync(p => p.Id == id);
     }
 
     private ValidationError ValidateBirthdayPerson(BirthdayPerson person)

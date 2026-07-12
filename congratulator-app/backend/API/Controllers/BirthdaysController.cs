@@ -15,17 +15,85 @@ public class BirthdaysController : ControllerBase
         _service = service;
     }
 
+    // Получить айди именинника
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var birthday = await _service.GetByIdAsync(id);
+        if (birthday == null) return NotFound();
+        return Ok(birthday);
+    }
+
+    // Получить всех именинников
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var birthdays = await _service.GetAllAsync();
+        var birthdays = await _service.GetUpALLAsync(); // ← Исправлено!
         return Ok(birthdays);
     }
 
+    // Получить ближайших именинников
+    [HttpGet("upcoming")]
+    public async Task<IActionResult> GetUpcoming([FromQuery] int days = 7)
+    {
+        var birthdays = await _service.GetUpAsync(days);
+        return Ok(birthdays);
+    }
+
+    // Создать именинника
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] BirthdayPerson person)
     {
-        var created = await _service.CreateAsync(person);
-        return CreatedAtAction(nameof(GetAll), new { id = created.Id }, created);
+        try
+        {
+            var created = await _service.CreateAsync(person);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Errors);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { error = "Внутренняя ошибка сервера" });
+        }
+    }
+
+    // Обновить именинника
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, [FromBody] BirthdayPerson updatedPerson)
+    {
+        try
+        {
+            var updated = await _service.ChangeAsync(id, updatedPerson);
+            if (updated == null)
+                return NotFound(new { error = "Именинник не найден" });
+            return Ok(updated);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Errors);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { error = "Внутренняя ошибка сервера" });
+        }
+    }
+
+    // Удалить именинника
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        try
+        {
+            var result = await _service.DeleteAsync(id);
+            if (!result)
+                return NotFound(new { error = "Именинник не найден" });
+            return NoContent();
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { error = "Внутренняя ошибка сервера" });
+        }
     }
 }
