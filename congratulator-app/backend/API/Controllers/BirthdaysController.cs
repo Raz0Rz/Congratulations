@@ -19,25 +19,43 @@ public class BirthdaysController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var birthday = await _service.GetByIdAsync(id);
-        if (birthday == null) return NotFound();
-        return Ok(birthday);
+        try{
+            var birthday = await _service.GetByIdAsync(id);
+            if (birthday == null) return NotFound();
+            return Ok(birthday);
+        }
+        catch(Exception){
+            _logger.LogError(ex, "Ошибка при получении id именинника");
+            return StatusCode(500, new { error = "Внутренняя ошибка сервера"});
+        }
     }
 
     // Получить всех именинников
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var birthdays = await _service.GetUpALLAsync(); // ← Исправлено!
-        return Ok(birthdays);
+        try{
+            var birthdays = await _service.GetUpALLAsync();
+            return Ok(birthdays);
+        }
+        catch(Exception){
+            _logger.LogError(ex, "Ошибка при получении всех именинников");
+            return StatusCode(500, new { error = "Внутренняя ошибка сервера"});
+        }
     }
 
     // Получить ближайших именинников
     [HttpGet("upcoming")]
     public async Task<IActionResult> GetUpcoming([FromQuery] int days = 7)
     {
-        var birthdays = await _service.GetUpAsync(days);
-        return Ok(birthdays);
+        try{
+            var birthdays = await _service.GetUpAsync(days);
+            return Ok(birthdays);
+        }
+        catch(Exception){
+            _logger.LogError(ex, "Ошибка при получении ближайших именинников");
+            return StatusCode(500, new { error = "Внутренняя ошибка сервера" });
+        }
     }
 
     // Создать именинника
@@ -51,12 +69,13 @@ public class BirthdaysController : ControllerBase
         }
         catch (ValidationException ex)
         {
-            return BadRequest(ex.Errors);
+            return BadRequest(new { errors = ex.Errors.Errors });
         }
-        catch (Exception)
-        {
-            return StatusCode(500, new { error = "Внутренняя ошибка сервера" });
+        catch (Exception){
+            _logger.LogError(ex, "Ошибка при создании именинника");
+            return (500, new { error = "Внутрення ошибка сервера" });
         }
+
     }
 
     // Обновить именинника
@@ -72,10 +91,11 @@ public class BirthdaysController : ControllerBase
         }
         catch (ValidationException ex)
         {
-            return BadRequest(ex.Errors);
+            return BadRequest(new { errors = ex.Errors.Errors });
         }
         catch (Exception)
         {
+            _logger.LogError(ex, "Ошибка при обновлении именинника");
             return StatusCode(500, new { error = "Внутренняя ошибка сервера" });
         }
     }
@@ -92,7 +112,8 @@ public class BirthdaysController : ControllerBase
             return NoContent();
         }
         catch (Exception)
-        {
+        {   
+            _logger.LogError(ex, "Ошибка при удалении именинника");
             return StatusCode(500, new { error = "Внутренняя ошибка сервера" });
         }
     }

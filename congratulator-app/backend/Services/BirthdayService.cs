@@ -84,7 +84,7 @@ public class BirthdayService : IBirthdayService
     }
 
     public async Task<BirthdayPerson?> GetByIdAsync(int id){
-        return await _context.BirthdayPersons.FirstOrDefaultAsync(p => p.Id == id);
+        return await _context.BirthdayPersons.FirstOrDefaultAsync(p => p.Id == id);;
     }
 
     private ValidationError ValidateBirthdayPerson(BirthdayPerson person)
