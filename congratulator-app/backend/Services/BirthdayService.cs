@@ -40,7 +40,7 @@ public class BirthdayService : IBirthdayService
 
     public async Task<BirthdayPerson> CreateAsync(BirthdayPerson person){
 
-        var errors = ValidateBirthdayPerson(person);
+        var errors = await ValidateBirthdayPersonAsync(person);
 
         if(errors.HasErrors){
             throw new ValidationException(errors);
@@ -52,7 +52,7 @@ public class BirthdayService : IBirthdayService
     }
 
     public async Task<BirthdayPerson> ChangeAsync(int id, BirthdayPerson updatedPerson){
-        var errors = ValidateBirthdayPerson(updatedPerson);
+        var errors = await ValidateBirthdayPersonAsync(updatedPerson);
 
         if(errors.HasErrors){
             throw new ValidationException(errors);
@@ -65,6 +65,7 @@ public class BirthdayService : IBirthdayService
         User.FirstName = updatedPerson.FirstName;
         User.LastName = updatedPerson.LastName;
         User.BirthDate = updatedPerson.BirthDate;
+        User.Email = updatedPerson.Email;
         User.PhotoPath = updatedPerson.PhotoPath;
 
         await _context.SaveChangesAsync();
@@ -87,29 +88,55 @@ public class BirthdayService : IBirthdayService
         return await _context.BirthdayPersons.FirstOrDefaultAsync(p => p.Id == id);;
     }
 
-    private ValidationError ValidateBirthdayPerson(BirthdayPerson person)
-    {
+    private async Task<ValidationError> ValidateBirthdayPersonAsync(BirthdayPerson person){
         var errors = new ValidationError();
 
         if (string.IsNullOrWhiteSpace(person.FirstName))
             errors.AddError("Имя обязательно для заполнения");
         else if (person.FirstName.Length > 100)
             errors.AddError("Имя не должно превышать 100 символов");
+        else if (!System.Text.RegularExpressions.Regex.IsMatch(person.FirstName, @"^[a-zA-Zа-яА-ЯёЁ\s\-]+$"))
+            errors.AddError("Имя может содержать только буквы, пробелы и дефис");
 
         if (string.IsNullOrWhiteSpace(person.LastName))
             errors.AddError("Фамилия обязательна для заполнения");
         else if (person.LastName.Length > 100)
             errors.AddError("Фамилия не должна превышать 100 символов");
+        else if (!System.Text.RegularExpressions.Regex.IsMatch(person.LastName, @"^[a-zA-Zа-яА-ЯёЁ\s\-]+$"))
+            errors.AddError("Фамилия может содержать только буквы, пробелы и дефис");
 
         if (person.BirthDate == default)
             errors.AddError("Дата рождения обязательна для заполнения");
-
-        if (person.BirthDate > DateOnly.FromDateTime(DateTime.Today))
+        if(person.BirthDate > DateOnly.FromDateTime(DateTime.Today))
             errors.AddError("Дата рождения не может быть в будущем");
-
         if (person.BirthDate.Year < 1900)
             errors.AddError("Год рождения должен быть не ранее 1900");
 
+        if (string.IsNullOrWhiteSpace(person.Email)){
+            errors.AddError("Email обязателен для заполнения");
+        }
+        else if (!IsValidEmail(person.Email)){
+            errors.AddError("Некорректный формат email");
+        }
+        else {
+            // Проверка на уникальность email
+            var exists = await _context.BirthdayPersons
+                .AnyAsync(p => p.Email == person.Email);
+
+            if (exists)
+                errors.AddError("Пользователь с таким email уже существует");
+        }
+
         return errors;
+    }
+
+    private bool IsValidEmail(string email){
+        try{
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch{
+            return false;
+        }
     }
 }
