@@ -68,10 +68,26 @@ public class BirthdaysController : ControllerBase
 
     // Создать именинника
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] BirthdayPerson person)
+    public async Task<IActionResult> Create([FromForm] BirthdayPerson person, IFormFile? photo)
     {
         try
         {
+            if (photo != null && photo.Length > 0){
+                var uploads = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                if (!Directory.Exists(uploads))
+                    Directory.CreateDirectory(uploads);
+
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
+                var filePath = Path.Combine(uploads, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await photo.CopyToAsync(stream);
+                }
+
+                person.PhotoPath = $"/uploads/{fileName}";
+            }
+
             var created = await _service.CreateAsync(person);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
@@ -88,13 +104,54 @@ public class BirthdaysController : ControllerBase
 
     // Обновить именинника
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] BirthdayPerson updatedPerson)
+    public async Task<IActionResult> Update(
+        int id,
+        [FromForm] BirthdayPerson updatedPerson,
+        IFormFile? photo)
     {
         try
         {
+            // 1. Сначала получаем существующего именинника ИЗ БД
+            var user = await _service.GetByIdAsync(id);
+            if (user == null)
+                return NotFound(new { error = "Именинник не найден" });
+
+            // 2. Обновляем фото (если есть)
+            if (photo != null && photo.Length > 0)
+            {
+                // Удаляем старое фото
+                if (!string.IsNullOrEmpty(user.PhotoPath))
+                {
+                    var oldFilePath = Path.Combine(
+                        Directory.GetCurrentDirectory(),
+                        "wwwroot",
+                        user.PhotoPath.TrimStart('/')
+                    );
+                    if (System.IO.File.Exists(oldFilePath))
+                        System.IO.File.Delete(oldFilePath);
+                }
+
+                // Сохраняем новое фото
+                var uploads = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                if (!Directory.Exists(uploads))
+                    Directory.CreateDirectory(uploads);
+
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
+                var filePath = Path.Combine(uploads, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await photo.CopyToAsync(stream);
+                }
+
+                updatedPerson.PhotoPath = $"/uploads/{fileName}";
+            }
+
+            // 3. Обновляем данные в БД
             var updated = await _service.ChangeAsync(id, updatedPerson);
             if (updated == null)
                 return NotFound(new { error = "Именинник не найден" });
+
             return Ok(updated);
         }
         catch (ValidationException ex)
@@ -114,9 +171,28 @@ public class BirthdaysController : ControllerBase
     {
         try
         {
+            // 1. Получаем именинника (чтобы узнать путь к фото)
+            var user = await _service.GetByIdAsync(id);
+            if (user == null)
+                return NotFound(new { error = "Именинник не найден" });
+
+            // 2. Удаляем фото (если есть)
+            if (!string.IsNullOrEmpty(user.PhotoPath))
+            {
+                var filePath = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    user.PhotoPath.TrimStart('/')
+                );
+                if (System.IO.File.Exists(filePath))
+                    System.IO.File.Delete(filePath);
+            }
+
+            // 3. Удаляем запись из БД
             var result = await _service.DeleteAsync(id);
             if (!result)
                 return NotFound(new { error = "Именинник не найден" });
+
             return NoContent();
         }
         catch (Exception ex)

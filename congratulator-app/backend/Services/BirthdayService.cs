@@ -45,7 +45,7 @@ public class BirthdayService : IBirthdayService
         if(errors.HasErrors){
             throw new ValidationException(errors);
         }
-
+        
         _context.BirthdayPersons.Add(person);
         await _context.SaveChangesAsync();
         return person;
