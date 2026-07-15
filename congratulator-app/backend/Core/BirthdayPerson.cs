@@ -6,6 +6,7 @@ public class BirthdayPerson
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public DateOnly BirthDate { get; set; }
+    public string Email { get; set; } = string.Empty;
     public string? PhotoPath { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string? Comment { get; set; }
 }
