@@ -5,10 +5,12 @@ import './App.css';
 function App() {
     const [birthdays, setBirthdays] = useState([]);
     const [showForm, setShowForm] = useState(false);
+    const [editingPerson, setEditingPerson] = useState(null);
     const [newPerson, setNewPerson] = useState({
         firstName: '',
         lastName: '',
         birthDate: '',
+        email: '',
         photoFile: null
     });
 
@@ -46,9 +48,21 @@ function App() {
         }
     };
 
-    const CreatePerson = async () => {
-        if (!newPerson.firstName || !newPerson.lastName || !newPerson.birthDate) {
-            alert('Заполните все обязательные поля (Имя, Фамилия, Дата рождения)');
+    const openEditForm = (person) => {
+        setEditingPerson(person);
+        setNewPerson({
+            firstName: person.firstName,
+            lastName: person.lastName,
+            birthDate: person.birthDate,
+            email: person.email,
+            photoFile: null
+        });
+        setShowForm(true);
+    };
+
+    const SavePerson = async () => {
+        if (!newPerson.firstName || !newPerson.lastName || !newPerson.birthDate || !newPerson.email) {
+            alert('Заполните все обязательные поля (Имя, Фамилия, Дата рождения, Email)');
             return;
         }
 
@@ -56,29 +70,38 @@ function App() {
         formData.append('firstName', newPerson.firstName);
         formData.append('lastName', newPerson.lastName);
         formData.append('birthDate', newPerson.birthDate);
+        formData.append('email', newPerson.email);
         if (newPerson.photoFile) {
             formData.append('photo', newPerson.photoFile);
         }
 
         try {
-            const response = await axios.post('http://localhost:5227/api/Birthdays', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-            console.log('Добавлен:', response.data);
+            let response;
+            if (editingPerson) {
+                response = await axios.put(`http://localhost:5227/api/Birthdays/${editingPerson.id}`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                alert('Именинник обновлён');
+            } else {
+                response = await axios.post('http://localhost:5227/api/Birthdays', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                alert('Именинник добавлен');
+            }
+
+            console.log('Сохранён:', response.data);
 
             setShowForm(false);
-            setNewPerson({ firstName: '', lastName: '', birthDate: '', photoFile: null });
+            setEditingPerson(null);
+            setNewPerson({ firstName: '', lastName: '', birthDate: '', email: '', photoFile: null });
 
             await loadAll();
-            alert('Именинник добавлен');
         } catch (error) {
-            console.error('Ошибка добавления:', error);
+            console.error('Ошибка сохранения:', error);
             if (error.response?.data?.errors) {
                 alert('Ошибки:\n' + error.response.data.errors.join('\n'));
             } else {
-                alert('Не удалось добавить именинника');
+                alert('Не удалось сохранить именинника');
             }
         }
     };
@@ -92,43 +115,49 @@ function App() {
             </header>
             <main>
                 <div className="navigation">
-                    <button className="all">Все</button>
-                    <button className="nearest">Ближайшие</button>
-                    <button className="add">Добавить</button>
+                    <button className="all" onClick={loadAll}>Все</button>
+                    <button className="nearest" onClick={loadUpcoming}>Ближайшие</button>
+                    <button className="add" onClick={() => setShowForm(true)}>Добавить</button>
                 </div>
 
-                {showForm && (
-                    <div className="form-modal">
-                        <h2>Добавить именинника</h2>
-                        <input
-                            type="text"
-                            placeholder="Имя *"
-                            value={newPerson.firstName}
-                            onChange={(e) => setNewPerson({ ...newPerson, firstName: e.target.value })}
-                        />
-                        <input
-                            type="text"
-                            placeholder="Фамилия *"
-                            value={newPerson.lastName}
-                            onChange={(e) => setNewPerson({ ...newPerson, lastName: e.target.value })}
-                        />
-                        <input
-                            type="date"
-                            placeholder="Дата рождения *"
-                            value={newPerson.birthDate}
-                            onChange={(e) => setNewPerson({ ...newPerson, birthDate: e.target.value })}
-                        />
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => setNewPerson({ ...newPerson, photoFile: e.target.files[0] })}
-                        />
-                        <div className="form-buttons">
-                            <button className="save-btn">Сохранить</button>
-                            <button className="cancel-btn">Отмена</button>
-                        </div>
+                <div className={`overlay ${showForm ? 'active' : ''}`} onClick={() => { setShowForm(false); setEditingPerson(null); }}></div>
+
+                <div className={`AddWindow ${showForm ? 'visible' : ''}`}>
+                    <h2>{editingPerson ? 'Редактировать именинника' : 'Добавить именинника'}</h2>
+                    <input
+                        type="text"
+                        placeholder="Имя"
+                        value={newPerson.firstName}
+                        onChange={(e) => setNewPerson({ ...newPerson, firstName: e.target.value })}
+                    />
+                    <input
+                        type="text"
+                        placeholder="Фамилия"
+                        value={newPerson.lastName}
+                        onChange={(e) => setNewPerson({ ...newPerson, lastName: e.target.value })}
+                    />
+                    <input
+                        type="date"
+                        placeholder="Дата рождения"
+                        value={newPerson.birthDate}
+                        onChange={(e) => setNewPerson({ ...newPerson, birthDate: e.target.value })}
+                    />
+                    <input
+                        type="email"
+                        placeholder="Email"
+                        value={newPerson.email}
+                        onChange={(e) => setNewPerson({ ...newPerson, email: e.target.value })}
+                    />
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setNewPerson({ ...newPerson, photoFile: e.target.files[0] })}
+                    />
+                    <div className="form-buttons">
+                        <button className="save-btn" onClick={SavePerson}>Сохранить</button>
+                        <button className="cancel-btn" onClick={() => { setShowForm(false); setEditingPerson(null); }}>Отмена</button>
                     </div>
-                )}
+                </div>
 
                 <div className="cards">
                     {birthdays.map(person => (
@@ -147,8 +176,8 @@ function App() {
                             <div className="nameuser">{person.firstName} {person.lastName}</div>
                             <div className="datebirth">{person.birthDate}</div>
                             <div className="editDeleteBox">
-                                <div className="edit">✏️</div>
-                                <div className="delete">🗑️</div>
+                                <div className="edit" onClick={() => openEditForm(person)}>Редактировать</div>
+                                <div className="delete" onClick={() => DeletePerson(person.id)}>Удалить</div>
                             </div>
                         </div>
                     ))}
