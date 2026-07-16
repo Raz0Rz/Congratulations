@@ -39,9 +39,7 @@ public class BirthdayService : IBirthdayService
     }
 
     public async Task<BirthdayPerson> CreateAsync(BirthdayPerson person){
-
-        var errors = await ValidateBirthdayPersonAsync(person);
-
+        var errors = await ValidateBirthdayPersonAsync(person, null);
         if(errors.HasErrors){
             throw new ValidationException(errors);
         }
@@ -52,14 +50,12 @@ public class BirthdayService : IBirthdayService
     }
 
     public async Task<BirthdayPerson> ChangeAsync(int id, BirthdayPerson updatedPerson){
-        var errors = await ValidateBirthdayPersonAsync(updatedPerson);
-
+        var errors = await ValidateBirthdayPersonAsync(updatedPerson, id);
         if(errors.HasErrors){
             throw new ValidationException(errors);
         }
 
         var User = await GetByIdAsync(id);
-
         if(User == null) return null;
         
         User.FirstName = updatedPerson.FirstName;
@@ -69,26 +65,23 @@ public class BirthdayService : IBirthdayService
         User.PhotoPath = updatedPerson.PhotoPath;
 
         await _context.SaveChangesAsync();
-
         return User;
     }
 
     public async Task<bool> DeleteAsync(int id){
         var User = await GetByIdAsync(id);
-
         if(User == null) return false;
 
         _context.BirthdayPersons.Remove(User);
         await _context.SaveChangesAsync();
-
         return true;
     }
 
     public async Task<BirthdayPerson?> GetByIdAsync(int id){
-        return await _context.BirthdayPersons.FirstOrDefaultAsync(p => p.Id == id);;
+        return await _context.BirthdayPersons.FirstOrDefaultAsync(p => p.Id == id);
     }
 
-    private async Task<ValidationError> ValidateBirthdayPersonAsync(BirthdayPerson person){
+    private async Task<ValidationError> ValidateBirthdayPersonAsync(BirthdayPerson person, int? excludeId = null){
         var errors = new ValidationError();
 
         if (string.IsNullOrWhiteSpace(person.FirstName))
@@ -119,10 +112,15 @@ public class BirthdayService : IBirthdayService
             errors.AddError("Некорректный формат email");
         }
         else {
-            // Проверка на уникальность email
-            var exists = await _context.BirthdayPersons
-                .AnyAsync(p => p.Email == person.Email);
-
+            var query = _context.BirthdayPersons.Where(p => p.Email == person.Email);
+            
+            // Исключаем текущего пользователя при редактировании
+            if (excludeId.HasValue)
+            {
+                query = query.Where(p => p.Id != excludeId.Value);
+            }
+            
+            var exists = await query.AnyAsync();
             if (exists)
                 errors.AddError("Пользователь с таким email уже существует");
         }
